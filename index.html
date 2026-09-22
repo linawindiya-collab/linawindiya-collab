@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MPI Prakarya — Pengolahan Serealia, Umbi & Kacang-kacangan</title>
+<style>
+  :root{
+    --font-scale: 1.0;
+    --c-green: #2f9e44;
+    --c-green-dark: #1e6b2e;
+    --c-orange: #f08c00;
+    --c-orange-dark: #c96a00;
+    --c-clay: #e8590c;
+    --c-cream: #fffaf0;
+    --c-ink: #2b2620;
+    --c-ink-soft: #5c5346;
+    --c-card: #ffffff;
+    --c-danger: #e03131;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%; overflow:hidden;}
+  body{
+    font-family: -apple-system, "Segoe UI", "Nunito", "Helvetica Neue", Arial, sans-serif;
+    background: #f0f9ff url('bg-ruang-kelas.jpg') center/cover no-repeat fixed;
+    color: var(--c-ink);
+    display:flex; align-items:center; justify-content:center;
+    width:100vw; height:100vh;
+  }
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background: rgba(240,249,255,0.82);
+    z-index:0;
+  }
+  #viewport{
+    position:relative; z-index:1;
+    width: min(100vw, calc(100vh * 16 / 9));
+    height: min(100vh, calc(100vw * 9 / 16));
+    display:flex; align-items:center; justify-content:center;
+  }
+  #stage-16-9{
+    width:100%; height:100%;
+    aspect-ratio:16/9;
+    background:transparent; border:none; box-shadow:none; border-radius:0;
+    overflow:hidden;
+    position:relative;
+    font-size: calc(15px * var(--font-scale, 1.0));
+  }
+  .page{
+    position:absolute; inset:0;
+    display:none;
+    flex-direction:column;
+    padding: clamp(10px, 1.8vh, 18px);
+    overflow:hidden;
+  }
+  .page.active{display:flex;}
+  button{font-family:inherit; cursor:pointer; border:none; background:none;}
+  ::-webkit-scrollbar{display:none;}
+
+  /* ===== Top Nav Bar (used on inner pages) ===== */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 4px 10px; margin-bottom: clamp(6px,1vh,10px);
+    flex-shrink:0;
+  }
+  .nav-btn{
+    display:flex; align-items:center; gap:6px;
+    background: linear-gradient(145deg,#ffffff,#eef6ff);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-weight:800;
+    font-size: clamp(12px, 1.5vh, 15px);
+    color: var(--c-green-dark);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+    transition: transform .15s ease;
+  }
+  .nav-btn:active{transform:scale(0.94);}
+  .nav-controls{display:flex; gap:8px; align-items:center;}
+  .icon-circle{
+    width: clamp(40px,5.2vh,48px); height: clamp(40px,5.2vh,48px);
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background: linear-gradient(145deg,#ffffff,#eef6ff);
+    font-size: clamp(18px,2.3vh,23px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+    transition: transform .15s ease;
+  }
+  .icon-circle:active{transform:scale(0.9);}
+  .title-pill{
+    background: linear-gradient(90deg, var(--c-green), var(--c-green-dark));
+    color:white; font-weight:800;
+    padding: 8px 26px; border-radius:999px;
+    font-size: clamp(16px, 2.2vh, 22px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    white-space:nowrap;
+  }
+
+  /* ===== PAGE 1: COVER ===== */
+  #page-cover{ align-items:center; justify-content:space-between; text-align:center; }
+  .cover-header{
+    display:flex; align-items:center; justify-content:center; gap:14px;
+    background: rgba(255,255,255,0.75);
+    border-radius: 999px;
+    padding: 6px 22px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+    flex-shrink:0;
+  }
+  .cover-header img{
+    height: clamp(50px, 6.8vh, 68px);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  }
+  .cover-header .school-id{ text-align:left; }
+  .cover-header .school-id b{ font-size: clamp(13px,1.7vh,17px); display:block; color:var(--c-green-dark);}
+  .cover-header .school-id span{ font-size: clamp(10px,1.3vh,13px); color:var(--c-ink-soft); }
+  .cover-badges{ display:flex; gap:8px; }
+  .badge{
+    background: var(--c-orange); color:white; font-weight:800;
+    font-size: clamp(9px,1.2vh,12px);
+    padding:4px 10px; border-radius:999px;
+  }
+  .cover-mid{ display:flex; flex-direction:column; align-items:center; gap: clamp(6px,1.2vh,14px); }
+  .cover-eyebrow{
+    font-size: clamp(12px,1.6vh,16px); font-weight:800; color:var(--c-orange-dark);
+    letter-spacing:0.5px;
+  }
+  .cover-title{
+    font-size: clamp(2.8rem, 6.8vw, 5.2rem);
+    font-weight:900; line-height:1.02;
+    color:#fff;
+    -webkit-text-stroke: 3px var(--c-green-dark);
+    text-shadow: 4px 4px 0 var(--c-green-dark), -2px -2px 0 var(--c-green-dark), 2px -2px 0 var(--c-green-dark), -2px 2px 0 var(--c-green-dark);
+    max-width:90%;
+  }
+  .cover-subtitle{
+    font-size: clamp(1.4rem, 3.2vw, 2.6rem);
+    font-weight:800; color:var(--c-clay);
+    text-shadow: 2px 2px 0 rgba(255,255,255,0.7);
+  }
+  .play-btn{
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    margin-top: clamp(4px,1vh,10px);
+  }
+  .play-circle{
+    width: clamp(60px, 8.5vh, 80px); height: clamp(60px, 8.5vh, 80px);
+    border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #ffd43b, var(--c-orange));
+    display:flex; align-items:center; justify-content:center;
+    font-size: clamp(26px, 3.6vh, 36px); color:white;
+    box-shadow: 0 0 0 0 rgba(240,140,0,0.6);
+    animation: pulse-glow 1.8s infinite;
+  }
+  @keyframes pulse-glow{
+    0%{ box-shadow:0 0 0 0 rgba(240,140,0,0.55);}
+    70%{ box-shadow:0 0 0 22px rgba(240,140,0,0);}
+    100%{ box-shadow:0 0 0 0 rgba(240,140,0,0);}
+  }
+  .play-label{ font-weight:900; font-size: clamp(24px, 3.8vh, 36px); color: var(--c-green-dark); }
+  .cover-footer{
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    background: rgba(255,255,255,0.7);
+    border-radius:16px; padding:6px 18px;
+    flex-shrink:0;
+  }
+  .cover-footer b{ font-size: clamp(11px,1.5vh,14px); color:var(--c-green-dark);}
+  .cover-footer span{ font-size: clamp(9px,1.2vh,12px); color:var(--c-ink-soft); font-style:italic;}
+
+  /* ===== PAGE 2: MENU ===== */
+  .menu-grid{
+    flex:1; display:grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(2,1fr);
+    gap: clamp(8px,1.4vh,16px); margin-top: clamp(4px,1vh,8px);
+  }
+  .menu-card{
+    background: linear-gradient(160deg,#ffffff, #f3f9ff);
+    border-radius:20px;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.08), 0 8px 16px rgba(0,0,0,0.1);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:6px; padding: 8px;
+    transition: transform .15s ease;
+    text-align:center;
+  }
+  .menu-card:active{ transform: translateY(3px) scale(0.98); }
+  .icon-box{
+    width: clamp(66px,9vh,88px); height: clamp(66px,9vh,88px);
+    border-radius:22px;
+    display:flex; align-items:center; justify-content:center;
+    font-size: clamp(34px,4.8vh,46px);
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.15);
+  }
+  .ib-1{ background: linear-gradient(150deg,#a9e34b,#37b24d); }
+  .ib-2{ background: linear-gradient(150deg,#ffd43b,#f08c00); }
+  .ib-3{ background: linear-gradient(150deg,#66d9e8,#22b8cf); }
+  .ib-4{ background: linear-gradient(150deg,#ff8787,#e03131); }
+  .ib-5{ background: linear-gradient(150deg,#b197fc,#7048e8); }
+  .ib-6{ background: linear-gradient(150deg,#ffc078,#e8590c); }
+  .menu-card h3{ font-size: clamp(15px,2vh,20px); font-weight:800; color:var(--c-ink); }
+  .menu-card p{ font-size: clamp(10px,1.3vh,13px); color:var(--c-ink-soft); font-weight:600; line-height:1.25;}
+
+  /* ===== Generic content card page ===== */
+  .content-wrap{ flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* PAGE 3: Tujuan Pembelajaran */
+  .tp-card{
+    flex:1; background: rgba(255,255,255,0.92); border-radius:24px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.12);
+    padding: clamp(16px,2.5vh,28px) clamp(24px,4vw,48px);
+    display:flex; flex-direction:column; justify-content:center; gap: clamp(8px,1.4vh,14px);
+  }
+  .tp-item{ display:flex; align-items:flex-start; gap:12px; }
+  .tp-item .tp-ico{
+    flex-shrink:0; width: clamp(30px,4vh,38px); height: clamp(30px,4vh,38px);
+    border-radius:50%; background: var(--c-green);
+    color:white; display:flex; align-items:center; justify-content:center; font-weight:900;
+    font-size: clamp(13px,1.7vh,16px);
+  }
+  .tp-item p{ font-size: clamp(13.5px,1.65vh,16px); font-weight:600; line-height:1.45; color:var(--c-ink);}
+  .tp-heading{ font-size: clamp(18px,2.4vh,24px); font-weight:900; color:var(--c-green-dark); margin-bottom:4px;}
+
+  /* PAGE 4: Materi */
+  .materi-grid{
+    flex:1; display:grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(2,1fr);
+    gap: clamp(8px,1.2vh,14px); margin-top: 4px; overflow:hidden;
+  }
+  .materi-card{
+    background: var(--c-card); border-radius:18px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.1);
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .materi-visual{
+    height:42%; display:flex; align-items:center; justify-content:center;
+    font-size: clamp(30px,4.5vh,44px);
+  }
+  .materi-body{ padding: 6px 10px; display:flex; flex-direction:column; gap:2px; flex:1; overflow:hidden;}
+  .materi-body h4{ font-size: clamp(13px,1.7vh,17px); font-weight:800; color:var(--c-ink);}
+  .materi-body p{ font-size: clamp(10.5px,1.35vh,13px); font-weight:600; color:var(--c-ink-soft); line-height:1.3; overflow:hidden;}
+
+  /* PAGE 5: Simulasi */
+  .sim-wrap{ flex:1; display:flex; gap: clamp(8px,1.2vh,14px); overflow:hidden; }
+  .sim-left{
+    flex:1.4; background:var(--c-card); border-radius:20px; box-shadow:0 4px 12px rgba(0,0,0,0.1);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:8px; position:relative;
+  }
+  .sim-right{
+    flex:1; background:var(--c-card); border-radius:20px; box-shadow:0 4px 12px rgba(0,0,0,0.1);
+    display:flex; flex-direction:column; padding: 10px; gap:8px; overflow:hidden;
+  }
+  .sim-tabs{ display:flex; gap:6px; margin-bottom:4px; flex-shrink:0; }
+  .sim-tab{
+    flex:1; padding:8px 4px; border-radius:12px; font-weight:800;
+    font-size: clamp(11px,1.4vh,14px); background:#eef3f8; color:var(--c-ink-soft);
+    transition: all .2s;
+  }
+  .sim-tab.active{ background: var(--c-green); color:white; box-shadow:0 3px 8px rgba(47,158,68,0.4);}
+  .sim-info h4{ font-size: clamp(14px,1.8vh,18px); font-weight:900; color:var(--c-green-dark); margin-bottom:4px;}
+  .sim-info p{ font-size: clamp(11.5px,1.5vh,14px); font-weight:600; color:var(--c-ink); line-height:1.4;}
+  .sim-bars{ display:flex; flex-direction:column; gap:6px; margin-top:6px;}
+  .sim-bar-row{ display:flex; align-items:center; gap:6px; }
+  .sim-bar-label{ font-size: clamp(10px,1.3vh,12.5px); font-weight:800; width:34%; color:var(--c-ink-soft);}
+  .sim-bar-track{ flex:1; height: clamp(10px,1.6vh,16px); background:#eef3f8; border-radius:999px; overflow:hidden;}
+  .sim-bar-fill{ height:100%; border-radius:999px; transition: width 1s ease; }
+
+  /* PAGE 6: Evaluasi */
+  .eval-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; flex-shrink:0;}
+  .score-chip{
+    background: linear-gradient(90deg,#ffd43b,var(--c-orange)); color:white; font-weight:900;
+    padding:6px 16px; border-radius:999px; font-size: clamp(12px,1.6vh,15px);
+    box-shadow:0 3px 8px rgba(0,0,0,0.15);
+  }
+  .eval-body{ flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  .eval-round-badge{
+    align-self:center; background: var(--c-green-dark); color:white; font-weight:800;
+    padding:5px 18px; border-radius:999px; font-size: clamp(11px,1.4vh,14px); margin-bottom:6px;
+  }
+  .q-box{
+    flex:1; background:rgba(255,255,255,0.94); border-radius:20px; box-shadow:0 6px 16px rgba(0,0,0,0.1);
+    padding: clamp(12px,2vh,22px) clamp(18px,3vw,32px); display:flex; flex-direction:column; justify-content:center; gap:10px;
+  }
+  .q-text{ font-size: clamp(14px,1.9vh,18px); font-weight:800; color:var(--c-ink); text-align:center;}
+  .q-options{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .q-opt{
+    background:#eef3f8; border-radius:14px; padding: 10px 22px; font-weight:700;
+    font-size: clamp(13.5px,1.8vh,17px); text-align:center; transition: all .15s;
+    border: 2px solid transparent;
+  }
+  .q-opt:active{ transform:scale(0.97); }
+  .q-opt.correct{ background:#d3f9d8; border-color:var(--c-green); color:var(--c-green-dark);}
+  .q-opt.wrong{ background:#ffe3e3; border-color:var(--c-danger); color:var(--c-danger);}
+  .tf-options{ display:flex; gap:16px; justify-content:center; }
+  .tf-btn{ padding:12px 30px; border-radius:16px; font-weight:900; font-size: clamp(14px,1.9vh,18px); }
+  .tf-true{ background:#d3f9d8; color:var(--c-green-dark);}
+  .tf-false{ background:#ffe3e3; color:var(--c-danger);}
+  .eval-nextbtn{
+    align-self:center; margin-top:4px;
+    background: var(--c-green); color:white; font-weight:800; padding:8px 24px; border-radius:999px;
+    font-size: clamp(12px,1.6vh,15px); box-shadow:0 4px 10px rgba(0,0,0,0.15);
+    opacity:0.4; pointer-events:none; transition:opacity .2s;
+  }
+  .eval-nextbtn.enabled{ opacity:1; pointer-events:auto; }
+
+  /* Matching round */
+  .match-wrap{ display:flex; justify-content:space-between; gap: 6%; position:relative; flex:1; align-items:center;}
+  .match-col{ display:flex; flex-direction:column; gap: clamp(8px,1.4vh,14px); width:44%;}
+  .match-item{
+    background:#eef3f8; border-radius:14px; padding: 10px 14px; font-weight:700; text-align:center;
+    font-size: clamp(12px,1.6vh,15px); border:3px solid transparent; transition: all .15s;
+  }
+  .match-item.selected{ border-color: var(--c-orange); background:#fff4e0; }
+  .match-item.matched{ background:#d3f9d8; border-color:var(--c-green); color:var(--c-green-dark);}
+  #matchSvg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+
+  /* Recap */
+  .recap-wrap{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap: clamp(6px,1.2vh,12px);}
+  .trophy{ font-size: clamp(44px,6vh,60px); filter: drop-shadow(0 4px 6px rgba(0,0,0,0.25)); animation: trophy-bounce 1.4s ease infinite;}
+  @keyframes trophy-bounce{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);} }
+  .recap-score{ font-size: clamp(2.2rem,5vw,3.6rem); font-weight:900; color:var(--c-green-dark); }
+  .recap-detail{ display:flex; gap: clamp(10px,2vw,26px); }
+  .recap-chip{ background:white; border-radius:14px; padding:8px 16px; box-shadow:0 4px 10px rgba(0,0,0,0.1); text-align:center;}
+  .recap-chip b{ display:block; font-size: clamp(15px,2vh,19px); color:var(--c-orange-dark);}
+  .recap-chip span{ font-size: clamp(10px,1.3vh,12.5px); color:var(--c-ink-soft); font-weight:700;}
+  .reset-btn{ background:var(--c-clay); color:white; font-weight:800; padding:10px 28px; border-radius:999px; font-size: clamp(12px,1.6vh,15px); box-shadow:0 4px 10px rgba(0,0,0,0.2);}
+
+  /* PAGE 7: Profil Guru */
+  .profile-card{
+    flex:1; display:flex; align-items:center; justify-content:center; gap: clamp(20px,4vw,50px);
+    background:rgba(255,255,255,0.9); border-radius:24px; box-shadow:0 8px 20px rgba(0,0,0,0.12);
+    padding: clamp(16px,2.5vh,26px);
+  }
+  .profile-photo{
+    width: clamp(130px,18vh,175px); height: clamp(130px,18vh,175px); border-radius:50%;
+    background: linear-gradient(140deg, var(--c-green), var(--c-orange));
+    padding:5px; flex-shrink:0;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.25);
+  }
+  .profile-photo img{ width:100%; height:100%; object-fit:cover; border-radius:50%; border:3px solid white; display:block;}
+  .profile-text{ display:flex; flex-direction:column; gap:6px; max-width:52%;}
+  .profile-text h2{ font-size: clamp(20px,2.8vh,26px); font-weight:900; color:var(--c-ink);}
+  .profile-text .role{ font-size: clamp(13px,1.7vh,16px); font-weight:800; color:var(--c-green-dark);}
+  .profile-text .school{ font-size: clamp(12px,1.5vh,14px); font-weight:600; color:var(--c-ink-soft);}
+  .profile-quote{
+    margin-top:8px; font-style:italic; font-size: clamp(12.5px,1.6vh,15px); font-weight:600;
+    color:var(--c-clay); border-left:4px solid var(--c-orange); padding-left:12px; line-height:1.4;
+  }
+
+  /* Wawasan popup */
+  .overlay{
+    position:absolute; inset:0; background:rgba(20,30,20,0.55);
+    display:none; align-items:center; justify-content:center; z-index:50;
+  }
+  .overlay.active{ display:flex; }
+  .fact-box{
+    background:white; border-radius:22px; padding: clamp(18px,3vh,30px) clamp(22px,4vw,40px);
+    max-width:70%; text-align:center; box-shadow:0 12px 30px rgba(0,0,0,0.3);
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  .fact-box .fico{ font-size: clamp(36px,5vh,50px); }
+  .fact-box h3{ font-size: clamp(16px,2.1vh,20px); color:var(--c-orange-dark); font-weight:900;}
+  .fact-box p{ font-size: clamp(13px,1.7vh,16px); font-weight:600; line-height:1.5; color:var(--c-ink);}
+  .fact-close{ margin-top:6px; background:var(--c-green); color:white; padding:8px 22px; border-radius:999px; font-weight:800; font-size: clamp(12px,1.5vh,14px);}
+
+  img[data-fallback]{ }
+</style>
+</head>
+<body>
+<div id="viewport">
+<div id="stage-16-9">
+
+  <!-- ================= PAGE 1: COVER ================= -->
+  <div class="page active" id="page-cover">
+    <div class="cover-header">
+      <img src="LOGO_SEKOLAH.jpeg" alt="Logo Sekolah" onerror="this.style.display='none'">
+      <div class="school-id">
+        <b>SMP Negeri 2 Kedungpring</b>
+        <span>Kurikulum Merdeka — Fase D</span>
+      </div>
+      <div class="cover-badges">
+        <span class="badge">Kurikulum Merdeka</span>
+        <span class="badge">Fase D · Kelas VIII</span>
+      </div>
+    </div>
+
+    <div class="cover-mid">
+      <div class="cover-eyebrow">MEDIA PEMBELAJARAN INTERAKTIF · PRAKARYA</div>
+      <div class="cover-title">Pangan Lokal Nusantara</div>
+      <div class="cover-subtitle">Serealia · Umbi-umbian · Kacang-kacangan</div>
+      <div class="play-btn" onclick="playClick(); goPage('page-menu')">
+        <div class="play-circle">▶</div>
+        <div class="play-label">MULAI</div>
+      </div>
+    </div>
+
+    <div class="cover-footer">
+      <b>Disusun oleh: Lina Windi Yatni, S.Pd</b>
+      <span>"Mengenal pangan lokal, merawat kedaulatan pangan bangsa"</span>
+    </div>
+  </div>
+
+  <!-- ================= PAGE 2: MENU ================= -->
+  <div class="page" id="page-menu">
+    <div class="topbar">
+      <button class="nav-btn" onclick="playClick(); goPage('page-cover')">🏠 BERANDA</button>
+      <div class="title-pill">Menu Utama</div>
+      <div class="nav-controls">
+        <div class="icon-circle" onclick="adjustFont(-0.08)">A-</div>
+        <div class="icon-circle" onclick="adjustFont(0.08)">A+</div>
+        <div class="icon-circle" id="soundToggleBtn" onclick="toggleSound()">🔊</div>
+      </div>
+    </div>
+    <div class="menu-grid">
+      <div class="menu-card" onclick="playClick(); goPage('page-tujuan')">
+        <div class="icon-box ib-1">🎯</div>
+        <h3>Tujuan Pembelajaran</h3>
+        <p>Capaian & indikator kompetensi siswa</p>
+      </div>
+      <div class="menu-card" onclick="playClick(); goPage('page-materi')">
+        <div class="icon-box ib-2">📖</div>
+        <h3>Materi Pembelajaran</h3>
+        <p>Jenis, karakteristik & kandungan gizi</p>
+      </div>
+      <div class="menu-card" onclick="playClick(); goPage('page-simulasi')">
+        <div class="icon-box ib-3">🕹️</div>
+        <h3>Simulasi Interaktif</h3>
+        <p>Laboratorium virtual pangan lokal</p>
+      </div>
+      <div class="menu-card" onclick="playClick(); goPage('page-evaluasi'); initEvaluasi();">
+        <div class="icon-box ib-4">📝</div>
+        <h3>Evaluasi Multi-Format</h3>
+        <p>3 babak uji pemahaman, total 100 poin</p>
+      </div>
+      <div class="menu-card" onclick="playClick(); goPage('page-guru')">
+        <div class="icon-box ib-5">👨‍🏫</div>
+        <h3>Profil Guru</h3>
+        <p>Informasi fasilitator pendidik</p>
+      </div>
+      <div class="menu-card" onclick="playClick(); openFact();">
+        <div class="icon-box ib-6">💡</div>
+        <h3>Wawasan & Fakta</h3>
+        <p>Fakta menarik seputar pangan lokal</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PAGE 3: TUJUAN PEMBELAJARAN ================= -->
+  <div class="page" id="page-tujuan">
+    <div class="topbar">
+      <button class="nav-btn" onclick="playClick(); goPage('page-menu')">⬅ MENU</button>
+      <div class="title-pill">Tujuan Pembelajaran</div>
+      <div class="nav-controls"><div class="icon-circle" onclick="playClick(); goPage('page-cover')">🏠</div></div>
+    </div>
+    <div class="content-wrap">
+      <div class="tp-card">
+        <div class="tp-heading">Setelah mengikuti pembelajaran ini, peserta didik mampu:</div>
+        <div class="tp-item"><div class="tp-ico">1</div><p>Mengidentifikasi berbagai jenis bahan pangan serealia, umbi-umbian, dan kacang-kacangan yang tersedia di wilayah setempat.</p></div>
+        <div class="tp-item"><div class="tp-ico">2</div><p>Menjelaskan karakteristik fisik (bentuk, warna, tekstur) dari setiap kelompok bahan pangan lokal tersebut.</p></div>
+        <div class="tp-item"><div class="tp-ico">3</div><p>Menganalisis kandungan gizi utama (karbohidrat, protein, vitamin, mineral) pada serealia, umbi-umbian, dan kacang-kacangan.</p></div>
+        <div class="tp-item"><div class="tp-ico">4</div><p>Mengaitkan potensi pangan lokal dengan upaya diversifikasi pangan dan ketahanan pangan keluarga.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PAGE 4: MATERI ================= -->
+  <div class="page" id="page-materi">
+    <div class="topbar">
+      <button class="nav-btn" onclick="playClick(); goPage('page-menu')">⬅ MENU</button>
+      <div class="title-pill">Materi Pembelajaran</div>
+      <div class="nav-controls"><div class="icon-circle" onclick="playClick(); goPage('page-cover')">🏠</div></div>
+    </div>
+    <div class="materi-grid">
+      <div class="materi-card">
+        <div class="materi-visual" style="background:linear-gradient(160deg,#fff3bf,#ffd43b);">🌾</div>
+        <div class="materi-body"><h4>Serealia</h4><p>Kelompok biji-bijian dari famili rumput-rumputan seperti padi, jagung, gandum, dan sorgum. Sumber karbohidrat utama masyarakat Indonesia.</p></div>
+      </div>
+      <div class="materi-card">
+        <div class="materi-visual" style="background:linear-gradient(160deg,#ffe8cc,#ffa94d);">🥔</div>
+        <div class="materi-body"><h4>Umbi-umbian</h4><p>Bagian tanaman (akar/batang) yang membesar di dalam tanah, contohnya singkong, ubi jalar, kentang, dan talas.</p></div>
+      </div>
+      <div class="materi-card">
+        <div class="materi-visual" style="background:linear-gradient(160deg,#d8f5a2,#82c91e);">🫘</div>
+        <div class="materi-body"><h4>Kacang-kacangan</h4><p>Biji dari famili polong-polongan (leguminosae) seperti kedelai, kacang tanah, dan kacang hijau, kaya akan protein nabati.</p></div>
+      </div>
+      <div class="materi-card">
+        <div class="materi-visual" style="background:linear-gradient(160deg,#c5f6fa,#3bc9db);">🍚</div>
+        <div class="materi-body"><h4>Gizi Serealia</h4><p>Kaya karbohidrat kompleks, vitamin B1 (tiamin), serat, dan sedikit protein. Bagian kulit ari menyimpan gizi lebih tinggi.</p></div>
+      </div>
+      <div class="materi-card">
+        <div class="materi-visual" style="background:linear-gradient(160deg,#eebefa,#cc5de8);">💪</div>
+        <div class="materi-body"><h4>Gizi Kacang-kacangan</h4><p>Sumber protein nabati tertinggi di antara ketiganya, juga mengandung lemak sehat, zat besi, dan folat.</p></div>
+      </div>
+      <div class="materi-card">
+        <div class="materi-visual" style="background:linear-gradient(160deg,#ffd8a8,#ff922b);">🍽️</div>
+        <div class="materi-body"><h4>Potensi Pangan Lokal</h4><p>Mengolah bahan pangan lokal secara beragam mendukung diversifikasi pangan dan mengurangi ketergantungan pada beras/terigu impor.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PAGE 5: SIMULASI ================= -->
+  <div class="page" id="page-simulasi">
+    <div class="topbar">
+      <button class="nav-btn" onclick="playClick(); goPage('page-menu')">⬅ MENU</button>
+      <div class="title-pill">Laboratorium Virtual Pangan</div>
+      <div class="nav-controls"><div class="icon-circle" onclick="playClick(); goPage('page-cover')">🏠</div></div>
+    </div>
+    <div class="sim-wrap">
+      <div class="sim-left">
+        <svg id="simSvg" viewBox="0 0 500 320" style="width:100%; height:clamp(260px,38vh,420px);"></svg>
+      </div>
+      <div class="sim-right">
+        <div class="sim-tabs">
+          <button class="sim-tab active" data-cat="serealia" onclick="playClick(); setSimCategory('serealia')">🌾 Serealia</button>
+          <button class="sim-tab" data-cat="umbi" onclick="playClick(); setSimCategory('umbi')">🥔 Umbi</button>
+          <button class="sim-tab" data-cat="kacang" onclick="playClick(); setSimCategory('kacang')">🫘 Kacang</button>
+        </div>
+        <div class="sim-info">
+          <h4 id="simTitle">Serealia</h4>
+          <p id="simDesc">Klik tombol kategori untuk menjelajahi karakteristik dan kandungan gizi tiap kelompok bahan pangan.</p>
+        </div>
+        <div class="sim-bars" id="simBars"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PAGE 6: EVALUASI ================= -->
+  <div class="page" id="page-evaluasi">
+    <div class="eval-header">
+      <button class="nav-btn" onclick="playClick(); goPage('page-menu')">⬅ MENU</button>
+      <div class="title-pill">Evaluasi Pemahaman</div>
+      <div class="score-chip">Skor: <span id="liveScore">0</span> / 100</div>
+    </div>
+    <div class="eval-body" id="evalBody"></div>
+  </div>
+
+  <!-- ================= PAGE 7: PROFIL GURU ================= -->
+  <div class="page" id="page-guru">
+    <div class="topbar">
+      <button class="nav-btn" onclick="playClick(); goPage('page-menu')">⬅ MENU</button>
+      <div class="title-pill">Profil Guru Pengembang</div>
+      <div class="nav-controls"><div class="icon-circle" onclick="playClick(); goPage('page-cover')">🏠</div></div>
+    </div>
+    <div class="content-wrap">
+      <div class="profile-card">
+        <div class="profile-photo"><img src="Foto_Profil.jpeg" alt="Foto Guru" onerror="this.style.display='none'"></div>
+        <div class="profile-text">
+          <h2>Lina Windi Yatni, S.Pd</h2>
+          <div class="role">Guru Mata Pelajaran Prakarya</div>
+          <div class="school">SMP Negeri 2 Kedungpring</div>
+          <div class="profile-quote">"Pangan lokal adalah warisan yang harus dikenal, diolah, dan dilestarikan oleh generasi muda."</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wawasan popup overlay -->
+  <div class="overlay" id="factOverlay">
+    <div class="fact-box">
+      <div class="fico" id="factIcon">💡</div>
+      <h3 id="factTitle">Tahukah kamu?</h3>
+      <p id="factText"></p>
+      <button class="fact-close" onclick="playClick(); closeFact()">Tutup</button>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+/* ================= AUDIO (Web Audio API synth) ================= */
+let audioCtx = null;
+let soundOn = true;
+function ensureCtx(){ if(!audioCtx){ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } return audioCtx; }
+function beep(freqStart, freqEnd, duration, type, vol){
+  if(!soundOn) return;
+  const ctx = ensureCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type || 'sine';
+  osc.frequency.setValueAtTime(freqStart, ctx.currentTime);
+  if(freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, ctx.currentTime + duration);
+  gain.gain.setValueAtTime(vol||0.15, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + duration);
+}
+function playClick(){ beep(450,880,0.12,'triangle',0.12); }
+function playCorrect(){
+  if(!soundOn) return;
+  [523.25,659.25,783.99].forEach((f,i)=> setTimeout(()=>beep(f,null,0.25,'sine',0.13), i*90));
+}
+function playWrong(){ beep(200,120,0.35,'sawtooth',0.14); }
+function toggleSound(){
+  soundOn = !soundOn;
+  document.getElementById('soundToggleBtn').textContent = soundOn ? '🔊' : '🔇';
+  if(soundOn) playClick();
+}
+function adjustFont(delta){
+  const stage = document.getElementById('stage-16-9');
+  let current = parseFloat(getComputedStyle(stage).getPropertyValue('--font-scale')) || 1.0;
+  current = Math.min(1.3, Math.max(0.8, current + delta));
+  stage.style.setProperty('--font-scale', current);
+  playClick();
+}
+
+/* ================= NAVIGATION ================= */
+function goPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* ================= WAWASAN / FACTS ================= */
+const facts = [
+  {icon:'🌽', title:'Tahukah kamu?', text:'Jagung pertama kali dibudidayakan oleh masyarakat Amerika Tengah lebih dari 7.000 tahun lalu, dan kini menjadi sumber karbohidrat utama kedua di Indonesia setelah beras.'},
+  {icon:'🍠', title:'Tahukah kamu?', text:'Ubi jalar ungu mengandung antosianin, pigmen alami yang berfungsi sebagai antioksidan dan memberi warna ungu pekat pada umbinya.'},
+  {icon:'🌱', title:'Tahukah kamu?', text:'Kacang-kacangan mampu menyuburkan tanah karena akarnya bersimbiosis dengan bakteri Rhizobium yang mengikat nitrogen dari udara.'},
+  {icon:'🍚', title:'Tahukah kamu?', text:'Beras pecah kulit (beras merah/coklat) memiliki kandungan serat dan vitamin B lebih tinggi dibanding beras putih karena lapisan bekatulnya masih utuh.'},
+  {icon:'🥜', title:'Tahukah kamu?', text:'Kacang tanah bukanlah kacang sejati dari pohon, melainkan polong yang tumbuh dan matang di dalam tanah — sehingga disebut "groundnut" dalam bahasa Inggris.'}
+];
+function openFact(){
+  const f = facts[Math.floor(Math.random()*facts.length)];
+  document.getElementById('factIcon').textContent = f.icon;
+  document.getElementById('factTitle').textContent = f.title;
+  document.getElementById('factText').textContent = f.text;
+  document.getElementById('factOverlay').classList.add('active');
+}
+function closeFact(){ document.getElementById('factOverlay').classList.remove('active'); }
+
+/* ================= SIMULASI (SVG Laboratorium Virtual) ================= */
+const simData = {
+  serealia: {
+    title:'Serealia', color:'#f08c00',
+    desc:'Serealia adalah biji-bijian dari famili rumput-rumputan (Poaceae) seperti padi, jagung, gandum, dan sorgum. Diolah menjadi tepung, beras, atau langsung dikonsumsi sebagai sumber energi utama.',
+    bars:[{label:'Karbohidrat', val:78, color:'#f08c00'},{label:'Protein', val:35, color:'#f59f00'},{label:'Serat', val:40, color:'#ffd43b'},{label:'Vitamin B', val:55, color:'#e8590c'}],
+    svg:(c)=>`
+      <ellipse cx="150" cy="230" rx="80" ry="18" fill="#d9c9a3" opacity="0.5"/>
+      <path d="M250 260 C 240 180, 260 120, 250 60" stroke="#5a8f3c" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <g class="kernel-drop">
+        <ellipse cx="250" cy="55" rx="18" ry="26" fill="${c}"/>
+        <ellipse cx="215" cy="90" rx="16" ry="24" fill="${c}" opacity="0.9"/>
+        <ellipse cx="285" cy="90" rx="16" ry="24" fill="${c}" opacity="0.9"/>
+        <ellipse cx="200" cy="130" rx="15" ry="22" fill="${c}" opacity="0.8"/>
+        <ellipse cx="300" cy="130" rx="15" ry="22" fill="${c}" opacity="0.8"/>
+      </g>
+      <rect x="140" y="270" width="220" height="4" rx="2" fill="#5a8f3c" opacity="0.3"/>
+      <g>
+        <rect x="330" y="60" width="118" height="30" rx="8" fill="white" stroke="${c}" stroke-width="1.5"/>
+        <text x="389" y="80" font-size="14" font-weight="800" text-anchor="middle" fill="#5c5346">Bulir Jagung</text>
+        <line x1="330" y1="75" x2="270" y2="75" stroke="${c}" stroke-width="3" stroke-dasharray="4 4">
+          <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite"/>
+        </line>
+      </g>
+      <g>
+        <rect x="20" y="200" width="130" height="30" rx="8" fill="white" stroke="${c}" stroke-width="1.5"/>
+        <text x="85" y="220" font-size="14" font-weight="800" text-anchor="middle" fill="#5c5346">Batang Rumput</text>
+        <line x1="150" y1="215" x2="230" y2="215" stroke="${c}" stroke-width="3" stroke-dasharray="4 4">
+          <animate attributeName="stroke-dashoffset" from="0" to="20" dur="1s" repeatCount="indefinite"/>
+        </line>
+      </g>`
+  },
+  umbi: {
+    title:'Umbi-umbian', color:'#e8590c',
+    desc:'Umbi-umbian adalah bagian akar atau batang tanaman yang membesar dan menyimpan cadangan makanan di dalam tanah, contohnya singkong, ubi jalar, kentang, dan talas.',
+    bars:[{label:'Karbohidrat', val:70, color:'#e8590c'},{label:'Protein', val:15, color:'#f08c00'},{label:'Serat', val:45, color:'#ffa94d'},{label:'Vitamin C', val:60, color:'#fd7e14'}],
+    svg:(c)=>`
+      <rect x="0" y="240" width="500" height="60" fill="#c9a876" opacity="0.4"/>
+      <path d="M250 240 L 245 150" stroke="#5a8f3c" stroke-width="5"/>
+      <ellipse cx="245" cy="140" rx="30" ry="14" fill="#5a8f3c"/>
+      <g class="tuber-shape">
+        <path d="M200 240 Q 180 280 220 300 Q 260 320 300 290 Q 330 260 300 235 Q 260 215 200 240 Z" fill="${c}"/>
+        <ellipse cx="230" cy="255" rx="4" ry="4" fill="#00000022"/>
+        <ellipse cx="270" cy="275" rx="4" ry="4" fill="#00000022"/>
+        <ellipse cx="255" cy="240" rx="4" ry="4" fill="#00000022"/>
+      </g>
+      <g>
+        <rect x="330" y="260" width="140" height="30" rx="8" fill="white" stroke="${c}" stroke-width="1.5"/>
+        <text x="400" y="280" font-size="13" font-weight="800" text-anchor="middle" fill="#5c5346">Umbi dalam Tanah</text>
+        <line x1="330" y1="275" x2="300" y2="270" stroke="${c}" stroke-width="3" stroke-dasharray="4 4">
+          <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1.2s" repeatCount="indefinite"/>
+        </line>
+      </g>
+      <g>
+        <rect x="20" y="120" width="130" height="30" rx="8" fill="white" stroke="${c}" stroke-width="1.5"/>
+        <text x="85" y="140" font-size="14" font-weight="800" text-anchor="middle" fill="#5c5346">Daun & Batang</text>
+        <line x1="150" y1="135" x2="230" y2="145" stroke="${c}" stroke-width="3" stroke-dasharray="4 4">
+          <animate attributeName="stroke-dashoffset" from="0" to="20" dur="1.2s" repeatCount="indefinite"/>
+        </line>
+      </g>`
+  },
+  kacang: {
+    title:'Kacang-kacangan', color:'#82c91e',
+    desc:'Kacang-kacangan berasal dari famili polong-polongan (Leguminosae) seperti kedelai, kacang tanah, dan kacang hijau. Kaya protein nabati dan mampu menyuburkan tanah.',
+    bars:[{label:'Protein', val:85, color:'#2f9e44'},{label:'Karbohidrat', val:40, color:'#82c91e'},{label:'Lemak Sehat', val:50, color:'#94d82d'},{label:'Zat Besi', val:65, color:'#37b24d'}],
+    svg:(c)=>`
+      <path d="M100 260 C 150 200, 350 200, 400 260" stroke="#5a8f3c" stroke-width="5" fill="none"/>
+      <g class="pod-shape">
+        <path d="M150 140 Q 250 100 350 140 Q 360 180 350 220 Q 250 260 150 220 Q 140 180 150 140 Z" fill="#8bc34a" opacity="0.35"/>
+        <circle cx="185" cy="170" r="20" fill="${c}"/>
+        <circle cx="230" cy="165" r="20" fill="${c}"/>
+        <circle cx="275" cy="170" r="20" fill="${c}"/>
+        <circle cx="315" cy="180" r="18" fill="${c}"/>
+      </g>
+      <g>
+        <rect x="340" y="100" width="120" height="30" rx="8" fill="white" stroke="${c}" stroke-width="1.5"/>
+        <text x="400" y="120" font-size="14" font-weight="800" text-anchor="middle" fill="#5c5346">Polong (Pod)</text>
+        <line x1="340" y1="115" x2="350" y2="145" stroke="${c}" stroke-width="3" stroke-dasharray="4 4">
+          <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite"/>
+        </line>
+      </g>
+      <g>
+        <rect x="30" y="180" width="110" height="30" rx="8" fill="white" stroke="${c}" stroke-width="1.5"/>
+        <text x="85" y="200" font-size="14" font-weight="800" text-anchor="middle" fill="#5c5346">Biji Kacang</text>
+        <line x1="140" y1="195" x2="185" y2="180" stroke="${c}" stroke-width="3" stroke-dasharray="4 4">
+          <animate attributeName="stroke-dashoffset" from="0" to="20" dur="1s" repeatCount="indefinite"/>
+        </line>
+      </g>`
+  }
+};
+function setSimCategory(cat){
+  const d = simData[cat];
+  document.querySelectorAll('.sim-tab').forEach(t=>t.classList.toggle('active', t.dataset.cat===cat));
+  document.getElementById('simTitle').textContent = d.title;
+  document.getElementById('simDesc').textContent = d.desc;
+  document.getElementById('simSvg').innerHTML = d.svg(d.color);
+  const barsWrap = document.getElementById('simBars');
+  barsWrap.innerHTML = '';
+  d.bars.forEach(b=>{
+    const row = document.createElement('div'); row.className='sim-bar-row';
+    row.innerHTML = `<div class="sim-bar-label">${b.label}</div><div class="sim-bar-track"><div class="sim-bar-fill" style="width:0%; background:${b.color};"></div></div>`;
+    barsWrap.appendChild(row);
+    setTimeout(()=>{ row.querySelector('.sim-bar-fill').style.width = b.val+'%'; }, 80);
+  });
+}
+setSimCategory('serealia');
+
+/* ================= EVALUASI ================= */
+let evalState = {};
+function initEvaluasi(){
+  evalState = { scoreA:0, scoreB:0, scoreC:0, qIndexA:0, qIndexC:0, matchedPairs:0, tfIndex:0 };
+  updateLiveScore();
+  renderRoundA();
+}
+function updateLiveScore(){
+  document.getElementById('liveScore').textContent = evalState.scoreA + evalState.scoreB + evalState.scoreC;
+}
+
+/* --- Babak A: Pilihan Ganda (30 poin, 3 soal x 10) --- */
+const soalPG = [
+  { q:'Kelompok bahan pangan yang berasal dari famili rumput-rumputan (Poaceae) adalah...', opts:['Umbi-umbian','Serealia','Kacang-kacangan','Sayuran'], correct:1 },
+  { q:'Bahan pangan yang paling kaya akan protein nabati di antara berikut ini adalah...', opts:['Singkong','Beras','Kedelai','Kentang'], correct:2 },
+  { q:'Ubi jalar dan singkong termasuk ke dalam kelompok...', opts:['Serealia','Kacang-kacangan','Umbi-umbian','Sereal olahan'], correct:2 }
+];
+function renderRoundA(){
+  const body = document.getElementById('evalBody');
+  if(evalState.qIndexA >= soalPG.length){ renderRoundB(); return; }
+  const s = soalPG[evalState.qIndexA];
+  body.innerHTML = `
+    <div class="eval-round-badge">BABAK A · Pilihan Ganda (Soal ${evalState.qIndexA+1}/${soalPG.length})</div>
+    <div class="q-box">
+      <div class="q-text">${s.q}</div>
+      <div class="q-options" id="pgOpts">
+        ${s.opts.map((o,i)=>`<div class="q-opt" data-i="${i}" onclick="answerPG(${i})">${o}</div>`).join('')}
+      </div>
+    </div>
+    <div class="eval-nextbtn" id="nextBtnA" onclick="nextA()">LANJUT ➜</div>`;
+}
+function answerPG(i){
+  const s = soalPG[evalState.qIndexA];
+  const opts = document.querySelectorAll('#pgOpts .q-opt');
+  opts.forEach(o=>o.onclick=null);
+  if(i===s.correct){ opts[i].classList.add('correct'); evalState.scoreA += 10; playCorrect(); }
+  else{ opts[i].classList.add('wrong'); opts[s.correct].classList.add('correct'); playWrong(); }
+  updateLiveScore();
+  document.getElementById('nextBtnA').classList.add('enabled');
+}
+function nextA(){ playClick(); evalState.qIndexA++; renderRoundA(); }
+
+/* --- Babak B: Menjodohkan SVG (40 poin, 4 pasang x 10) --- */
+const pairsData = [
+  {term:'Serealia', def:'Biji-bijian dari famili rumput-rumputan'},
+  {term:'Umbi-umbian', def:'Bagian akar/batang yang membesar di dalam tanah'},
+  {term:'Kacang-kacangan', def:'Biji dari famili polong-polongan kaya protein'},
+  {term:'Karbohidrat', def:'Sumber energi utama pada serealia dan umbi'}
+];
+let selTerm = null, selDef = null;
+function renderRoundB(){
+  const body = document.getElementById('evalBody');
+  evalState.matchedPairs = 0;
+  const defsShuffled = [...pairsData].sort(()=>Math.random()-0.5);
+  body.innerHTML = `
+    <div class="eval-round-badge">BABAK B · Menjodohkan (4 Pasang)</div>
+    <div class="q-box" style="position:relative;">
+      <svg id="matchSvg"></svg>
+      <div class="match-wrap">
+        <div class="match-col" id="termCol">
+          ${pairsData.map((p,i)=>`<div class="match-item" data-term="${i}" onclick="selectTerm(${i})">${p.term}</div>`).join('')}
+        </div>
+        <div class="match-col" id="defCol">
+          ${defsShuffled.map((p)=>`<div class="match-item" data-def="${pairsData.indexOf(p)}" onclick="selectDef(${pairsData.indexOf(p)})">${p.def}</div>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="eval-nextbtn" id="nextBtnB" onclick="nextB()">LANJUT ➜</div>`;
+  selTerm = null; selDef = null;
+}
+function selectTerm(i){
+  if(document.querySelector(`[data-term="${i}"]`).classList.contains('matched')) return;
+  document.querySelectorAll('[data-term]').forEach(e=>e.classList.remove('selected'));
+  selTerm = i;
+  document.querySelector(`[data-term="${i}"]`).classList.add('selected');
+  playClick();
+  tryMatch();
+}
+function selectDef(i){
+  if(document.querySelector(`[data-def="${i}"]`).classList.contains('matched')) return;
+  document.querySelectorAll('[data-def]').forEach(e=>e.classList.remove('selected'));
+  selDef = i;
+  document.querySelector(`[data-def="${i}"]`).classList.add('selected');
+  playClick();
+  tryMatch();
+}
+function tryMatch(){
+  if(selTerm===null || selDef===null) return;
+  const termEl = document.querySelector(`[data-term="${selTerm}"]`);
+  const defEl = document.querySelector(`[data-def="${selDef}"]`);
+  if(selTerm === selDef){
+    termEl.classList.remove('selected'); defEl.classList.remove('selected');
+    termEl.classList.add('matched'); defEl.classList.add('matched');
+    drawMatchLine(termEl, defEl);
+    evalState.scoreB += 10; evalState.matchedPairs++;
+    playCorrect(); updateLiveScore();
+    if(evalState.matchedPairs >= pairsData.length){
+      document.getElementById('nextBtnB').classList.add('enabled');
+    }
+  } else {
+    playWrong();
+    setTimeout(()=>{ termEl.classList.remove('selected'); defEl.classList.remove('selected'); }, 350);
+  }
+  selTerm = null; selDef = null;
+}
+function drawMatchLine(elA, elB){
+  const svg = document.getElementById('matchSvg');
+  const svgRect = svg.getBoundingClientRect();
+  const rA = elA.getBoundingClientRect(); const rB = elB.getBoundingClientRect();
+  const x1 = rA.right - svgRect.left, y1 = rA.top + rA.height/2 - svgRect.top;
+  const x2 = rB.left - svgRect.left, y2 = rB.top + rB.height/2 - svgRect.top;
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1',x1); line.setAttribute('y1',y1);
+  line.setAttribute('x2',x1); line.setAttribute('y2',y1);
+  line.setAttribute('stroke','#2f9e44'); line.setAttribute('stroke-width','4'); line.setAttribute('stroke-linecap','round');
+  svg.appendChild(line);
+  let t0=null;
+  function anim(ts){
+    if(!t0) t0=ts;
+    const p = Math.min(1, (ts-t0)/400);
+    line.setAttribute('x2', x1+(x2-x1)*p);
+    line.setAttribute('y2', y1+(y2-y1)*p);
+    if(p<1) requestAnimationFrame(anim);
+  }
+  requestAnimationFrame(anim);
+}
+function nextB(){ playClick(); renderRoundC(); }
+
+/* --- Babak C: Benar/Salah (30 poin, 3 soal x 10) --- */
+const soalBS = [
+  { q:'Kacang-kacangan mengandung protein nabati lebih tinggi dibandingkan serealia.', correct:true },
+  { q:'Umbi-umbian tumbuh dan disimpan sebagai cadangan makanan di dalam tanah.', correct:true },
+  { q:'Beras putih memiliki kandungan serat lebih tinggi daripada beras merah.', correct:false }
+];
+function renderRoundC(){
+  const body = document.getElementById('evalBody');
+  if(evalState.tfIndex >= soalBS.length){ renderRecap(); return; }
+  const s = soalBS[evalState.tfIndex];
+  body.innerHTML = `
+    <div class="eval-round-badge">BABAK C · Benar / Salah (Soal ${evalState.tfIndex+1}/${soalBS.length})</div>
+    <div class="q-box">
+      <div class="q-text">${s.q}</div>
+      <div class="tf-options" id="tfOpts">
+        <div class="tf-btn tf-true" onclick="answerTF(true)">✓ BENAR</div>
+        <div class="tf-btn tf-false" onclick="answerTF(false)">✗ SALAH</div>
+      </div>
+    </div>
+    <div class="eval-nextbtn" id="nextBtnC" onclick="nextC()">LANJUT ➜</div>`;
+}
+function answerTF(val){
+  const s = soalBS[evalState.tfIndex];
+  document.querySelectorAll('#tfOpts .tf-btn').forEach(b=>b.onclick=null);
+  if(val === s.correct){ evalState.scoreC += 10; playCorrect(); }
+  else{ playWrong(); }
+  updateLiveScore();
+  document.getElementById('nextBtnC').classList.add('enabled');
+}
+function nextC(){ playClick(); evalState.tfIndex++; renderRoundC(); }
+
+/* --- Babak D: Rekapitulasi --- */
+function renderRecap(){
+  const body = document.getElementById('evalBody');
+  const total = evalState.scoreA + evalState.scoreB + evalState.scoreC;
+  body.innerHTML = `
+    <div class="recap-wrap">
+      <div class="trophy">🏆</div>
+      <div class="recap-score">${total} / 100</div>
+      <div class="recap-detail">
+        <div class="recap-chip"><b>${evalState.scoreA}</b><span>Pilihan Ganda</span></div>
+        <div class="recap-chip"><b>${evalState.scoreB}</b><span>Menjodohkan</span></div>
+        <div class="recap-chip"><b>${evalState.scoreC}</b><span>Benar/Salah</span></div>
+      </div>
+      <button class="reset-btn" onclick="playClick(); initEvaluasi();">🔄 ULANGI EVALUASI</button>
+    </div>`;
+  playCorrect();
+}
+</script>
+</body>
+</html>
